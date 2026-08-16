@@ -8,10 +8,7 @@ sel = DefaultSelector()
 
 class ConnectionState:
     def __init__(
-        self, sock: socket,
-        buffer: bytes = b'',
-        type: str = 'server',
-        addr = None
+        self, sock: socket, buffer: bytes = b'', addr = None
     ):
         self.sock = sock
         self.buffer = buffer
@@ -21,9 +18,10 @@ class ConnectionState:
 def accept_handler(sock, mask):
     print(f'Accept handler for {sock} started')
     client, addr = sock.accept()
+
     client.setblocking(False)
     print('Start establishing the connection with', addr)
-    connection = ConnectionState(sock=client, type='client', addr=addr)
+    connection = ConnectionState(sock=client, addr=addr)
     handler = partial(echo_handler, connection)
     sel.register(client, EVENT_READ, handler)
 
@@ -35,19 +33,19 @@ def init_listener(address):
     sock.setblocking(False)
     sock.listen(5)
     handler = partial(accept_handler, sock)
+    handler.type = 'listener'
     sel.register(sock, EVENT_READ, data=handler)
-
-init_listener(('', 25000))
 
 
 def echo_handler(connection: ConnectionState, mask):
     handler = partial(echo_handler, connection)
+    handler.type = 'echo'
         
     if mask & EVENT_READ:
         data: bytes = connection.sock.recv(1024)
         if not data:
-            sel.unregister(connection.sock)
             connection.sock.close()
+            sel.unregister(connection.sock)
             return
         else:
             connection.buffer += data
@@ -66,8 +64,28 @@ def echo_handler(connection: ConnectionState, mask):
  
 def run():
     while True:
-        events = sel.select()
+        try:
+            events = sel.select()
+        except KeyboardInterrupt:
+            print('lolkek cheburek')
+            sel.close()
+            break
         for key, mask in events:
             callback = key.data
-            callback(mask)
-run()
+            try:
+                callback(mask)
+            except BlockingIOError as e:
+                print('Error:', e)
+                continue
+            except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError) as e:
+                print('Error:', e)
+                if key.data.type == 'listener':
+                    continue
+                sock = key.fileobj
+                sel.unregister(key.fileobj)
+                sock.close()
+
+
+if __name__ == '__main__':
+    init_listener(('', 25000))
+    run()
