@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+pythonpath = ["."]
+
+# Unknown marks are a typo, not a feature.
+addopts = "--strict-markers"
