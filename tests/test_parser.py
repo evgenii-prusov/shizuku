@@ -6,9 +6,7 @@ Two greps are part of the contract:
     grep -n socket parser.py      -> empty
     grep -n response parser.py    -> empty
 
-The second matters as much as the first: the parser exposes an error *state* with a
-reason string for me, and the server layer maps that to a 400. A parser that can build
-a Response can leak its internal reason to the client.
+The second matters as much as the first: the parser exposes an error *state* with a reason string for me, and the server layer maps that to a 400. A parser that can build a Response can leak its internal reason to the client.
 
 Interface pinned here:
 
@@ -28,10 +26,7 @@ def parse_all(raw: bytes):
     return parser, parser.feed(raw)
 
 
-# --------------------------------------------------------------------------------------
-# Valid requests. Each `raw` below is EXACTLY one complete request with nothing trailing,
-# which is what lets the byte-at-a-time replay reuse this table.
-# --------------------------------------------------------------------------------------
+# Valid requests. Each `raw` below is EXACTLY one complete request with nothing trailing, which is what lets the byte-at-a-time replay reuse this table.
 
 COMPLETE = [
     (
