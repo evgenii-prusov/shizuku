@@ -70,10 +70,34 @@ class HeadersState(ParserState):
         return None
 
 
-class BodyState(ParserState): ...
+class BodyState(ParserState):
+    @staticmethod
+    def feed(parser, data: bytes) -> None:
+        parser.buffer += data
+        line = ParserState._take_line(parser)
+        if line is None:
+            return None
+        content_length = self._headers.get('content_lenght', 0)
+        if len(line) != content_length:
+            raise MalformedRequest()
+        else:
+            self._body = line
+            parser.new_state(FinalState)
+            parser.feed(b"")
+        return None
+            
 
 
-class FinalState(ParserState): ...
+class FinalState(ParserState):
+    @staticmethod
+    def feed(parser, data: bytes) -> None | Request:
+        request = Request(
+            method = parser._method,
+            target = parser._target,
+            headers = parser._headers,
+            body = parser._body
+        )
+        return request
 
 
 class RequestParser:
@@ -118,3 +142,12 @@ if __name__ == "__main__":
     parser.feed(chunk3)
     parser.feed(chunk4)
     parser.feed(chunk5)
+    parser.feed(chunk6)
+    chunk7 = b"Content-Length: 5\r"
+    parser.feed(chunk7)
+    chunk8 = b"\n"
+    parser.feed(chunk8)
+    print(parser)
+    chunk9 = b"12345"
+    
+    
