@@ -14,6 +14,7 @@ Interface pinned here:
     parser.feed(data: bytes) -> Request | None    # None while incomplete
     parser.error -> str | None                    # None until ERROR, then sticky
 """
+
 import pytest
 
 from parser import RequestParser
@@ -106,7 +107,7 @@ def test_request_split_across_every_byte_boundary(raw, expected):
     where the chunk boundaries happened to land.
     """
     parser = RequestParser()
-    results = [parser.feed(raw[i:i + 1]) for i in range(len(raw))]
+    results = [parser.feed(raw[i : i + 1]) for i in range(len(raw))]
 
     assert results[-1] == expected, "the final byte must complete the request"
     assert all(r is None for r in results[:-1]), "no prefix may produce a Request"
@@ -116,6 +117,7 @@ def test_request_split_across_every_byte_boundary(raw, expected):
 # --------------------------------------------------------------------------------------
 # Incomplete: returns None and stays clean. Not an error — more bytes may still arrive.
 # --------------------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "raw",
@@ -140,6 +142,7 @@ def test_incomplete_returns_none_without_error(raw):
 # Malformed: sticky error, which the server layer maps to a bare 400.
 # --------------------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     "raw",
     [
@@ -155,7 +158,9 @@ def test_incomplete_returns_none_without_error(raw):
             b"GET / HTTP/1.1\r\nContent-Length: -5\r\n\r\n",
             id="negative-content-length",
         ),
-        pytest.param(b"GET / HTTP/1.1\r\nNoColonHere\r\n\r\n", id="header-without-colon"),
+        pytest.param(
+            b"GET / HTTP/1.1\r\nNoColonHere\r\n\r\n", id="header-without-colon"
+        ),
         pytest.param(b"GET / HTTP/1.1\nHost: h\n\n", id="bare-lf-is-rejected"),
     ],
 )
@@ -181,6 +186,7 @@ def test_error_is_sticky():
 # Pipelining. Kept out of the replay table above because the request completes before
 # the final byte, which is precisely the property this asserts.
 # --------------------------------------------------------------------------------------
+
 
 def test_bytes_past_content_length_do_not_corrupt_the_body():
     """Trailing bytes belong to the NEXT request. Even with no keep-alive yet, the body

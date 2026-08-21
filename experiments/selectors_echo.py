@@ -16,16 +16,14 @@ TRANSIENT_ACCEPT_ERRORS = (
 
 
 class ConnectionState:
-    def __init__(
-        self, sock: socket, buffer: bytes = b'', addr = None
-    ):
+    def __init__(self, sock: socket, buffer: bytes = b"", addr=None):
         self.sock = sock
         self.buffer = buffer
         self.addr = addr
         # Built once, here, so key.data is always the same tagged callable.
         # Rebuilding it per event is how the role tag went missing before.
         self.handler = partial(echo_handler, self)
-        self.handler.role = 'echo'
+        self.handler.role = "echo"
 
 
 def close_connection(sock: socket):
@@ -42,7 +40,7 @@ def close_connection(sock: socket):
 def accept_handler(sock, mask):
     client, addr = sock.accept()
     client.setblocking(False)
-    print('Start establishing the connection with', addr)
+    print("Start establishing the connection with", addr)
     connection = ConnectionState(sock=client, addr=addr)
     sel.register(client, EVENT_READ, connection.handler)
 
@@ -54,7 +52,7 @@ def init_listener(address):
     sock.setblocking(False)
     sock.listen(5)
     handler = partial(accept_handler, sock)
-    handler.role = 'listener'
+    handler.role = "listener"
     sel.register(sock, EVENT_READ, data=handler)
 
 
@@ -69,14 +67,10 @@ def echo_handler(connection: ConnectionState, mask):
             return
         else:
             connection.buffer += data
-            sel.modify(
-                connection.sock,
-                EVENT_READ | EVENT_WRITE,
-                connection.handler
-            )
+            sel.modify(connection.sock, EVENT_READ | EVENT_WRITE, connection.handler)
     if mask & EVENT_WRITE:
         sent = connection.sock.send(connection.buffer)
-        print(f'echoed message: {connection.buffer[:sent]}')
+        print(f"echoed message: {connection.buffer[:sent]}")
         connection.buffer = connection.buffer[sent:]
         if len(connection.buffer) == 0:
             sel.modify(connection.sock, EVENT_READ, connection.handler)
@@ -85,7 +79,7 @@ def echo_handler(connection: ConnectionState, mask):
 def dispatch(key, mask):
     """Run one handler. Returns normally if the loop should keep going;
     raises only when the failure is the *server's*, not a connection's."""
-    role = getattr(key.data, 'role', 'echo')
+    role = getattr(key.data, "role", "echo")
     try:
         key.data(mask)
     except BlockingIOError:
@@ -93,12 +87,12 @@ def dispatch(key, mask):
         # calls. Not an error: return and wait for the next readiness event.
         return
     except OSError as e:
-        print(f'{role} error: {e!r}')
-        if role == 'listener':
+        print(f"{role} error: {e!r}")
+        if role == "listener":
             if isinstance(e, TRANSIENT_ACCEPT_ERRORS):
                 return
-            raise       # the listener is gone; dying loudly beats a process
-                        # that is alive but will never accept anything again
+            raise  # the listener is gone; dying loudly beats a process
+            # that is alive but will never accept anything again
         close_connection(key.fileobj)
 
 
@@ -108,11 +102,11 @@ def run():
             for key, mask in sel.select():
                 dispatch(key, mask)
     except KeyboardInterrupt:
-        print('\ninterrupted, shutting down')
+        print("\ninterrupted, shutting down")
     finally:
         sel.close()
 
 
-if __name__ == '__main__':
-    init_listener(('', 25000))
+if __name__ == "__main__":
+    init_listener(("", 25000))
     run()

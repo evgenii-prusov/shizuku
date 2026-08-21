@@ -3,6 +3,7 @@
 This is the only place in the codebase that writes \\r\\n, which is why it is worth a
 literal byte-string assertion rather than a structural one.
 """
+
 import pytest
 
 from response import Response
@@ -22,10 +23,7 @@ def split_message(raw: bytes):
 
 def test_minimal_response_serializes_to_an_exact_byte_string():
     assert Response(200, {}, b"hi").serialize() == (
-        b"HTTP/1.1 200 OK\r\n"
-        b"Content-Length: 2\r\n"
-        b"\r\n"
-        b"hi"
+        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi"
     )
 
 

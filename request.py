@@ -10,11 +10,11 @@ class Request:
 
     @property
     def path(self) -> str:
-        return self.target.partition('?')[0]
-    
+        return self.target.partition("?")[0]
+
     @property
     def query(self) -> str:
-        return self.target.partition('?')[2]
+        return self.target.partition("?")[2]
 
     def header(self, name: str, default: str | None = None) -> str | None:
         for k, v in self.headers.items():

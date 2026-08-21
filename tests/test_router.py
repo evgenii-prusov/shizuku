@@ -9,6 +9,7 @@ DECISION — method mismatch on a known path returns 404, not 405. Strictly it i
 an `Allow` header; the week 1 DoD says unknown path -> 404 and is silent on mismatch, so
 404 is the on-spec answer. Change it deliberately, not by accident.
 """
+
 import pytest
 
 from request import Request
@@ -69,6 +70,7 @@ def test_handler_exception_becomes_500(router):
 def test_500_body_does_not_leak_the_exception(router):
     """Same category of mistake as the parser returning a Response: internal detail
     crossing a boundary it has no business crossing. Log the traceback, send the status."""
+
     def explode(request):
         raise RuntimeError("SECRET-a1b2c3")
 
@@ -87,7 +89,9 @@ def test_dispatch_always_returns_a_response(router):
 
 def test_handler_receives_the_request(router):
     seen = []
-    router.register("GET", "/echo", lambda request: seen.append(request) or Response(200, {}, b""))
+    router.register(
+        "GET", "/echo", lambda request: seen.append(request) or Response(200, {}, b"")
+    )
 
     request = get("/echo")
     router.dispatch(request)

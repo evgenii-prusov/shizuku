@@ -13,7 +13,7 @@ def echo_server(address):
 
     while True:
         client, addr = sock.accept()
-        print('connection with', addr, 'is established')
+        print("connection with", addr, "is established")
         with client:
             echo_handler(client, addr)
 
@@ -22,12 +22,12 @@ def echo_handler(client: socket, addr):
     while True:
         data = client.recv(1024)
         if not data:
-            print(f'Connection with {addr} is closed')
+            print(f"Connection with {addr} is closed")
             client.close()
             break
         bytes_send = client.send(data)
-        print(str(bytes_send), 'sent')
+        print(str(bytes_send), "sent")
 
 
-if __name__ == '__main__':
-    echo_server(('', 25000))
+if __name__ == "__main__":
+    echo_server(("", 25000))

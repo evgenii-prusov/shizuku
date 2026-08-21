@@ -6,6 +6,7 @@ header lookup (`header`). Everything else in this file pins *properties the rest
 codebase leans on* rather than behaviour Request implements — that it cannot be mutated,
 that equality is by value, and that path/query stay derived rather than stored.
 """
+
 import dataclasses
 import typing
 
@@ -23,6 +24,7 @@ def make(target: str = "/", **overrides) -> Request:
 # --------------------------------------------------------------------------------------
 # The target split.
 # --------------------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "target, expected_path, expected_query",
@@ -76,6 +78,7 @@ def test_empty_query_and_absent_query_differ_in_target_only():
 # --------------------------------------------------------------------------------------
 # Case-insensitive header lookup.
 # --------------------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "stored, looked_up",
@@ -131,6 +134,7 @@ def test_headers_dict_remains_directly_accessible():
 # Known limits — pinned so a future change is deliberate rather than accidental.
 # --------------------------------------------------------------------------------------
 
+
 def test_absolute_form_target_is_not_split_into_host_and_path():
     """`GET http://h/p HTTP/1.1` is legal for proxies. shizuku treats the whole thing as
     a path, which is wrong for a proxy and fine for an origin server. Known limit."""
@@ -145,6 +149,7 @@ def test_asterisk_form_target_is_passed_through():
 # --------------------------------------------------------------------------------------
 # Properties the rest of the codebase depends on.
 # --------------------------------------------------------------------------------------
+
 
 def test_request_is_immutable():
     """Load-bearing: the parser hands one Request to the router, which hands it to a
