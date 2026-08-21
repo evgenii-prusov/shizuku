@@ -1,3 +1,8 @@
+[project]
+name = "shizuku"
+version = "0.1.0"
+requires-python = ">=3.13"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
@@ -5,3 +10,10 @@ pythonpath = ["."]
 
 # Unknown marks are a typo, not a feature.
 addopts = "--strict-markers"
+
+[dependency-groups]
+dev = [
+    "debugpy>=1.8.21",
+    "pytest>=9.1.1",
+]
+

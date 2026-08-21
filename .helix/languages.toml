@@ -1,0 +1,18 @@
+# Project-local Helix config. Merged over ~/.config/helix/languages.toml;
+# this [language.debugger] block wins for files in this project.
+# Verified: 'hx --health python' here reports the .venv adapter, from $HOME the global one.
+[[language]]
+name = "python"
+
+[language.debugger]
+name = "debugpy"
+transport = "stdio"
+command = "/Users/evgenii/.local/bin/debugpy-adapter-notty"
+
+# Pinned entrypoint -- no {0} substitution, so helix-editor/helix#7637 cannot bite.
+# Absolute paths so this works regardless of the directory hx was launched from.
+#   :dbg parser
+[[language.debugger.templates]]
+name = "parser"
+request = "launch"
+args = { program = "/Users/evgenii/projects/north-star/shizuku/parser.py", python = "/Users/evgenii/projects/north-star/shizuku/.venv/bin/python3", cwd = "/Users/evgenii/projects/north-star/shizuku", console = "internalConsole", redirectOutput = true }
