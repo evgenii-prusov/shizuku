@@ -74,8 +74,9 @@ class HeadersState(ParserState):
             try:
                 colon_ind: int = line.index(b':')
                 k = line[:colon_ind]
+                if k != k.strip():
+                    raise MalformedRequest('white-space-around-header-name')
                 v = line[colon_ind + 1:]
-                #k, v = line.split(b":")
                 k = str(k, encoding="ascii").lower()
                 v = str(v, encoding="ascii").strip()
                 if k in parser._headers:
@@ -179,10 +180,3 @@ class RequestParser:
             f"  headers: {self._headers}\n"
             f"  body: {str(self._body, encoding='ascii')}"
         )
-
-
-if __name__ == '__main__':
-    parser = RequestParser()
-    chunk = b'GET / HTTP/1.1\r\nHost: example.com\r\n\r\n'
-    request = parser.feed(chunk)
-

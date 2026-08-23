@@ -105,12 +105,6 @@ def test_exactly_one_content_length_survives_whatever_the_casing(supplied):
     assert lengths[0].lower() == b"content-length: 2"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="decision pending: status_codes has four entries and serialize() indexes it "
-    "directly, so any other code is a KeyError at write time. 405 (the router's method "
-    "mismatch) and 431 (the header-size limit) are both already on the roadmap.",
-)
 @pytest.mark.parametrize("status", [405, 431, 201, 503])
 def test_a_status_code_outside_the_table_still_serializes(status):
     raw = Response(status, {}, b"").serialize()

@@ -273,11 +273,6 @@ def test_parsing_writes_nothing_to_stdout(capsys):
     assert capsys.readouterr().out == ""
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="decision pending: RFC 9112 makes whitespace before the colon a 400, "
-    "shizuku currently stores the key as 'host ' and never matches it again",
-)
 def test_whitespace_before_the_colon_is_rejected():
     parser, request = parse_all(b"GET / HTTP/1.1\r\nHost : h\r\n\r\n")
     assert request is None
