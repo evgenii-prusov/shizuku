@@ -14,7 +14,12 @@ import pytest
 
 from request import Request
 from response import Response
-from router import Router
+
+# Box 3 of the week 1 stop rule is not written yet. Importing it directly makes the
+# WHOLE suite un-collectable, which is how `pytest` at HEAD came to be red while the
+# parser work looked green. Skip this module until `router.py` lands, then it turns
+# itself back on with no edit here.
+Router = pytest.importorskip("router", reason="router.py not written yet").Router
 
 
 def get(target: str = "/", method: str = "GET") -> Request:

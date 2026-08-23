@@ -76,3 +76,42 @@ def test_headers_are_separated_from_body_by_a_blank_line():
     raw = Response(200, {"X-A": "1"}, b"body").serialize()
     assert raw.count(b"\r\n\r\n") == 1
     assert raw.endswith(b"\r\n\r\nbody")
+
+
+# --------------------------------------------------------------------------------------
+# Regression tests added 2026-08-22.
+# --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "supplied", ["Content-Length", "content-length", "CONTENT-LENGTH", "Content-length"]
+)
+def test_exactly_one_content_length_survives_whatever_the_casing(supplied):
+    """`serialize` drops a hand-set length by comparing `k != "content-length"` — an
+    exact, case-sensitive match, so any other spelling slips through and is emitted
+    alongside the computed one. Two disagreeing Content-Length headers on one response is
+    the shape request smuggling is built out of, and `test_computed_content_length_
+    overrides_a_hand_set_one` misses it because it happens to use the one casing the
+    comparison does not catch."""
+    raw = Response(200, {supplied: "999"}, b"hi").serialize()
+
+    head, _, _ = raw.partition(b"\r\n\r\n")
+    lengths = [
+        line
+        for line in head.split(b"\r\n")
+        if line.lower().startswith(b"content-length")
+    ]
+    assert len(lengths) == 1, f"expected one Content-Length, got {lengths}"
+    assert lengths[0].lower() == b"content-length: 2"
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="decision pending: status_codes has four entries and serialize() indexes it "
+    "directly, so any other code is a KeyError at write time. 405 (the router's method "
+    "mismatch) and 431 (the header-size limit) are both already on the roadmap.",
+)
+@pytest.mark.parametrize("status", [405, 431, 201, 503])
+def test_a_status_code_outside_the_table_still_serializes(status):
+    raw = Response(status, {}, b"").serialize()
+    assert raw.startswith(f"HTTP/1.1 {status} ".encode())

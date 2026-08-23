@@ -197,3 +197,88 @@ def test_bytes_past_content_length_do_not_corrupt_the_body():
     )
     assert parser.error is None
     assert request == Request("POST", "/x", {"content-length": "5"}, b"hello")
+
+
+# --------------------------------------------------------------------------------------
+# Regression tests added 2026-08-22 after a review found the two hardest cases above
+# passing for reasons other than the property they claim. Each test below fails against
+# the parser as written; that is the point of adding them.
+# --------------------------------------------------------------------------------------
+
+
+# `_take_line` slices `buffer[:terminator_ind - 1]`, which assumes a CR sits before the
+# LF without checking. On a bare LF it eats the last real byte instead of rejecting.
+#
+# The existing `bare-lf-is-rejected` case hides this: it puts the LF on the *request
+# line*, where truncation turns `HTTP/1.1` into `HTTP/1.` and the version regex errors
+# anyway. The error is real, the reason is not the one being claimed. Every case below
+# puts the LF somewhere the truncation is silent.
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        pytest.param(
+            b"GET / HTTP/1.1\r\nHost: example\nX-A: 1\r\n\r\n",
+            id="bare-lf-after-header-value",
+        ),
+        pytest.param(
+            b"GET / HTTP/1.1\r\nX-A: 1\r\nHost: example\n\r\n",
+            id="bare-lf-on-the-last-header",
+        ),
+    ],
+)
+def test_bare_lf_in_a_header_line_is_an_error_not_a_truncation(raw):
+    """Currently returns a Request carrying `{'host': 'exampl'}` — the final byte of the
+    value silently gone, no error set. A corrupted header is worse than a 400."""
+    parser, request = parse_all(raw)
+    assert request is None, "a bare LF must not yield a Request"
+    assert parser.error
+
+
+def test_bare_lf_cannot_shorten_content_length():
+    """The same one-byte truncation applied to framing, which is where it stops being a
+    cosmetic bug: `Content-Length: 10` becomes `1`, the body is cut to a single byte, and
+    the remaining nine bytes are left to be read as the start of a second request. That
+    shape is request smuggling."""
+    parser, request = parse_all(
+        b"POST /x HTTP/1.1\r\nContent-Length: 10\nHost: h\r\n\r\n0123456789"
+    )
+    assert parser.error, "bare LF in the Content-Length line must be rejected"
+    assert request is None
+
+
+def test_a_completed_parser_does_not_re_emit_its_request():
+    """There is no DONE state: `FinalState.feed` rebuilds the same Request on every call,
+    so a keep-alive read loop serves request #1's response forever.
+
+    This asserts only the design-agnostic half — request #1 must not come back. What
+    *should* happen after completion is an open decision (one parser instance per
+    request, or an explicit `reset()`); both satisfy this test, `feed` returning the
+    stale Request satisfies neither.
+    """
+    parser = RequestParser()
+    first = parser.feed(b"GET /one HTTP/1.1\r\nHost: h\r\n\r\n")
+    assert first == Request("GET", "/one", {"host": "h"}, b"")
+
+    assert parser.feed(b"") is not first
+    assert parser.feed(b"POST /two HTTP/1.1\r\nHost: h\r\n\r\n") != first
+
+
+def test_parsing_writes_nothing_to_stdout(capsys):
+    """`HeadersState` still carries three `print()` calls from debugging. pytest captures
+    them, which is exactly why the suite never noticed; under a real server they are
+    per-header noise on the process's stdout."""
+    RequestParser().feed(b"GET / HTTP/1.1\r\nHost: h\r\nX-Tag: a\r\nX-Tag: b\r\n\r\n")
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="decision pending: RFC 9112 makes whitespace before the colon a 400, "
+    "shizuku currently stores the key as 'host ' and never matches it again",
+)
+def test_whitespace_before_the_colon_is_rejected():
+    parser, request = parse_all(b"GET / HTTP/1.1\r\nHost : h\r\n\r\n")
+    assert request is None
+    assert parser.error

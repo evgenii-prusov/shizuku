@@ -1,5 +1,3 @@
-# b'GET / HTTP/1.1\r\nHost: example.com\r\n\r\n'
-# b'POST /submit HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n\r\nhello'
 from request import Request
 import re
 
@@ -23,6 +21,8 @@ class ParserState:
             return None
         if terminator_ind == 0:
             raise MalformedRequest('bare-lf-is-rejected')
+        if parser.buffer[terminator_ind-1] != 13:
+            raise MalformedRequest('bare-lf-after-header-value')
         line = parser.buffer[: terminator_ind - 1]
         del parser.buffer[: terminator_ind + 1]
         if line == b"":
@@ -78,12 +78,9 @@ class HeadersState(ParserState):
                 #k, v = line.split(b":")
                 k = str(k, encoding="ascii").lower()
                 v = str(v, encoding="ascii").strip()
-                print(f'k: {k} v: {v}')
                 if k in parser._headers:
                     curr_val = parser._headers[k]
-                    print(f'curr_val: {curr_val}')
                     v = curr_val + ',' + v
-                    print(parser._headers) 
                 parser._headers[k] = v
                 if 'content-length' in parser._headers:
                     content_length: int = 0
@@ -130,6 +127,12 @@ class FinalState(ParserState):
             headers = parser._headers,
             body = bytes(parser._body)
         )
+        parser._method = ''
+        parser._target = ''
+        parser._version = ''
+        parser._headers = {}
+        parser._body = b''
+        parser.new_state(StartLineState)
         return request
 
 class ErrorState(ParserState):
@@ -163,6 +166,7 @@ class RequestParser:
             if self.error is None:
                 self.error = str(e)
             self.new_state(ErrorState)
+            return None
         return request
 
     def __repr__(self):
@@ -179,6 +183,6 @@ class RequestParser:
 
 if __name__ == '__main__':
     parser = RequestParser()
-    chunk = b'GET /\r\n\r\n'
+    chunk = b'GET / HTTP/1.1\r\nHost: example.com\r\n\r\n'
     request = parser.feed(chunk)
 
