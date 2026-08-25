@@ -1,3 +1,4 @@
+from parser import MalformedRequest
 from request import Request
 from response import Response
 
@@ -17,5 +18,7 @@ class Router:
         try:
             res = handler(request)
             return res
+        except MalformedRequest:
+            return Response(400, {}, b'')
         except Exception:
             return Response(500, {}, b'')
