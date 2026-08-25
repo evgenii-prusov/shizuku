@@ -4,13 +4,13 @@ from dataclasses import dataclass
 
 @dataclass
 class Response:
-    status_code: int
+    status: int
     headers: dict[str, str]
     body: bytes
 
     def serialize(self) -> bytes:
         status_line = (
-            f"HTTP/1.1 {self.status_code} {HTTPStatus(self.status_code).phrase}\r\n"
+            f"HTTP/1.1 {self.status} {HTTPStatus(self.status).phrase}\r\n"
         )
         header = bytes(status_line, encoding="ascii")
 
