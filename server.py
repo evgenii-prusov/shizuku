@@ -1,7 +1,7 @@
 import asyncio
 from asyncio import StreamReader, StreamWriter, start_server
 
-from parser import RequestParser, MalformedRequest
+from parser import RequestParser
 from request import Request
 from response import Response
 from router import Router
@@ -12,7 +12,7 @@ router = Router()
 def handle(parser: RequestParser, router: Router, data: bytes) -> Response | None:
     request: Request = parser.feed(data)
     if request is None:
-        if isinstance(parser.error, MalformedRequest):
+        if parser.error:
             return Response(400, {}, b'')
         return None
     
