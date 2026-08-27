@@ -17,7 +17,7 @@ Interface pinned here:
 
 import pytest
 
-from parser import RequestParser
+from parser import RequestParser, MAX_HEADER_BYTES
 from request import Request
 
 
@@ -277,3 +277,72 @@ def test_whitespace_before_the_colon_is_rejected():
     parser, request = parse_all(b"GET / HTTP/1.1\r\nHost : h\r\n\r\n")
     assert request is None
     assert parser.error
+
+
+def test_single_unterminated_line_past_the_limit_is_rejected():
+    parser, request = parse_all(b'A' * (MAX_HEADER_BYTES + 1))
+    assert request is None
+    assert parser.error
+
+
+def test_bytes_at_the_limit_boundary():
+    parser, request = parse_all(b'A' * MAX_HEADER_BYTES)
+    assert request is None
+    assert parser.error is None
+
+
+def test_many_small_complete_headers_cumulatively_exceed_the_limit():
+    raw_msg = b'GET /ping HTTP/1.1\r\n'
+    headers = []
+    for i in range(1000):
+        headers.append(f'X-{i}: {i}')
+    headers = b'\r\n'.join(bytes(header, encoding='ascii') for header in headers)
+    final_msg = raw_msg + headers
+    parser, request = parse_all(final_msg)
+    assert request is None
+    assert parser.error
+
+
+def test_many_small_headers_trickled_across_feed_calls_still_trips_the_limit():
+    """Same property as the test above, but each header line arrives in its own feed()
+    call instead of one big blob. _take_line deletes a line from parser.buffer as soon as
+    it's consumed, so a limit checked only against a len(parser.buffer) snapshot never
+    sees more than one small line at a time here — the blob version above only trips
+    because the whole thing lands in the buffer before any line is consumed."""
+    parser = RequestParser()
+    assert parser.feed(b'GET /ping HTTP/1.1\r\n') is None
+    assert parser.error is None
+
+    sent = 0
+    request = None
+    i = 0
+    while parser.error is None and sent <= MAX_HEADER_BYTES:
+        line = f'X-{i}: {i}\r\n'.encode('ascii')
+        request = parser.feed(line)
+        sent += len(line)
+        i += 1
+
+    assert request is None
+    assert parser.error
+
+
+def test_header_byte_count_resets_between_requests():
+    """A first request that lands right under the limit must not leave enough of the
+    count behind to falsely trip an unrelated second request on the same connection."""
+    parser = RequestParser()
+
+    request_line = b'GET / HTTP/1.1\r\n'
+    header_prefix = b'X-Pad: '
+    header_suffix = b'\r\n\r\n'
+    overhead = len(request_line) + len(header_prefix) + len(header_suffix)
+    pad_value = b'a' * (MAX_HEADER_BYTES - overhead - 1)
+    first_raw = request_line + header_prefix + pad_value + header_suffix
+
+    first = parser.feed(first_raw)
+    assert parser.error is None
+    assert first == Request('GET', '/', {'x-pad': pad_value.decode('ascii')}, b'')
+
+    second_raw = b'GET /two HTTP/1.1\r\nHost: h\r\n\r\n'
+    second = parser.feed(second_raw)
+    assert parser.error is None
+    assert second == Request('GET', '/two', {'host': 'h'}, b'')

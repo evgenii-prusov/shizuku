@@ -3,6 +3,7 @@ import re
 
 
 _VERSION = re.compile(r"^HTTP/\d\.\d$")
+MAX_HEADER_BYTES: int = 1024 * 8
 
 
 class MalformedRequest(Exception): ...
@@ -15,6 +16,8 @@ class ParserState:
 
     @staticmethod
     def _take_line(parser) -> bytes | None:
+        if len(parser.buffer) > MAX_HEADER_BYTES:
+            raise MalformedRequest('header-too-large')
         try:
             terminator_ind = parser.buffer.index(b"\n")
         except ValueError:
