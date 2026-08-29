@@ -1,5 +1,5 @@
-from request import Request
 import re
+from request import Request
 
 
 _VERSION = re.compile(r"^HTTP/\d\.\d$")
@@ -18,6 +18,8 @@ class ParserState:
     def _take_line(parser) -> bytes | None:
         if len(parser.buffer) > MAX_HEADER_BYTES:
             raise MalformedRequest('header-too-large')
+        if parser._bytes_in_headers > MAX_HEADER_BYTES:
+            raise MalformedRequest('too-much-headers')
         try:
             terminator_ind = parser.buffer.index(b"\n")
         except ValueError:
@@ -70,6 +72,7 @@ class HeadersState(ParserState):
     @staticmethod
     def feed(parser, data: bytes) -> None:
         parser.buffer += data
+        parser._bytes_in_headers += len(data)
         line = ParserState._take_line(parser)
         if line is None:
             return None
@@ -135,6 +138,7 @@ class FinalState(ParserState):
         parser._target = ''
         parser._version = ''
         parser._headers = {}
+        parser._bytes_in_headers = 0
         parser._body = b''
         parser.new_state(StartLineState)
         return request
@@ -154,6 +158,7 @@ class RequestParser:
         self._version: str = ""
         self._body: bytes = b""
         self._headers: dict[str, str] = {}
+        self._bytes_in_headers: int = 0
 
     def new_state(self, newstate) -> None:
         self._state = newstate
@@ -181,5 +186,6 @@ class RequestParser:
             f"    target: {self._target}\n"
             f"    version: {self._version}\n"
             f"  headers: {self._headers}\n"
+            f"    bytes: {self._bytes_in_headers}\n"
             f"  body: {str(self._body, encoding='ascii')}"
         )

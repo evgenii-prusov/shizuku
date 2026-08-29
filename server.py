@@ -7,15 +7,17 @@ from response import Response
 from router import Router
 
 router = Router()
-router.register('GET', '/ping', lambda r: Response(200, {}, b'online'))
-router.register('POST', '/users', lambda r: Response(200, {'Lol': 'Kek'}, b''))
+router.register("GET", "/ping", lambda r: Response(200, {}, b"online"))
+router.register("POST", "/users", lambda r: Response(200, {"Lol": "Kek"}, b""))
+
+
 def handle(parser: RequestParser, router: Router, data: bytes) -> Response | None:
     request: Request | None = parser.feed(data)
     if request is None:
         if parser.error:
-            return Response(400, {}, b'')
+            return Response(400, {}, b"")
         return None
-    
+
     response = router.dispatch(request)
     return response
 
@@ -33,7 +35,7 @@ async def handle_request(reader: StreamReader, writer: StreamWriter) -> None:
             await writer.drain()
             if response.status == 400:
                 break
-            
+
     writer.close()
 
 
